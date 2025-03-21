@@ -1,1 +1,196 @@
+/*
+=======================================================
 
+                          IMPORTANT DETAILS
+
+=========================================================
+
+create a procedure to load the bronze data into the datawarehouse bronze schema whenever is needed
+bronze. : is the name of the schema to load
+load_bronze_data : will be a name giving to the procedure
+BEGIN : add it at the top of the query procedure you want to save
+END : add it at the bottm of the query procedure you want to save into the dataset
+to confirm if created : go to database name, click on programmabililty, click on stored procedure and refresh it
+to use it : open new query type "EXCE bronze.load_bronze_data" and run then it create the datas again into the bronze schema
+the print statement gives a message to show what the query did
+
+==========================================================
+
+The DECLARE statement on the top helps to determine the time it takes each table query to run and create the data
+this helps to know the bottleneck of why and where the query excecution got delayed most and why so
+after the DECLARE statement on the top, then use it inside all the table queries
+
+=================================================================
+
+BEGIN TRY on the top have a close END TRY on the bottom
+BEGIN CATCH, END CATCH on the bottom completed the try and catch error
+they are used to print error message whenever the query is run to help throw error when it catches any one
+
+================================================================
+
+TRUNCATE will empty/delete the table if the bale already contains the data you are trying to load
+this helps to not load data more than once which will course exces datas by duplicating the same thing and reloading it 
+the print statement gives a message to show what the query did
+
+================================================================
+
+use a BULK INSERT to load all the data either from csv or text to the database
+ensure to copy the path accurately from the folder
+the DECLARE statement created on the top is used in each of the table to:
+1. get the start time when the query started running => SET  @start_time = GETDATE();
+2. get the end time when the query ended => SET  @end_time = GETDATE();
+3. printed the time it took the query to run by calculating the diffrences b/w start-time and end-time using DATEDIFF(),
+	note: the cast is used to set the result to NVARCHAR as the result will be in number
+4. then print the design that shows the end of each table
+
+===================================================================
+
+FIRSTROW = 2: telling the sql to use the second row as first row as first row should be the header column
+FIELDTERMINATOR = ',': telling the sql to terminate the field demacation which is ',' please check if the data is demacated with either , ; ; # 
+TABLOCK: lock the table 
+
+========================================================================
+
+after loading the data, check if the data is correct in the schema
+check any missing data in column and rows, and if the colmns contain accurate value 
+use select * to view the data
+use select count(*) to count if the data row is correct
+
+========================================================================
+
+*/
+
+CREATE OR ALTER PROCEDURE bronze.load_bronze_data AS
+BEGIN
+	DECLARE @start_time DATETIME, @end_time DATETIME;
+		BEGIN TRY
+
+			PRINT('======================================');
+			PRINT('=> Loading bronze layer');
+			PRINT('======================================');
+
+
+																  /* load crm_cust_info */
+			SET  @start_time = GETDATE();
+			print('---------------------------------------');
+			print('=> Loading CRM table');
+			print('---------------------------------------');
+
+			print('=> Truncating table: bronze.crm_cust_info');
+			TRUNCATE TABLE bronze.crm_cust_info
+
+			print('=> Inserting data | table: bronze.crm_cust_info');
+			BULK INSERT bronze.crm_cust_info
+			FROM 'C:\Users\ezean\OneDrive\Desktop\sql-data-warehouse-project\datasets\source_crm\cust_info.csv'
+			WITH (
+				FIRSTROW = 2, 
+				FIELDTERMINATOR = ',', 
+				TABLOCK
+			)
+			SET @end_time = GETDATE();
+			PRINT'=> Load duration: ' + CAST(DATEDIFF(second, @start_time, @end_time)AS NVARCHAR) + 'seconds'
+			PRINT'<><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+
+
+															 /* load crm_prd_info */
+			SET  @start_time = GETDATE();
+			print('=> Truncating table: bronze.crm_prd_info');
+			TRUNCATE TABLE bronze.crm_prd_info
+
+			print('=> Inserting data | table: bronze.crm_prd_info');
+			BULK INSERT bronze.crm_prd_info
+			FROM 'C:\Users\ezean\OneDrive\Desktop\sql-data-warehouse-project\datasets\source_crm\prd_info.csv'
+			WITH (
+				FIRSTROW = 2, 
+				FIELDTERMINATOR = ',', 
+				TABLOCK
+			)
+			SET @end_time = GETDATE();
+			PRINT'=> Load duration: ' + CAST(DATEDIFF(second, @start_time, @end_time)AS NVARCHAR) + 'seconds'
+			PRINT'<><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+
+
+
+															 /* load crm_sales_details */
+			SET @start_time = GETDATE();
+			print('=> Truncating table: bronze.crm_sales details');
+			TRUNCATE TABLE bronze.crm_sales_details
+
+			print('=> Inserting data | table: bronze.crm_sales details');
+			BULK INSERT bronze.crm_sales_details
+			FROM 'C:\Users\ezean\OneDrive\Desktop\sql-data-warehouse-project\datasets\source_crm\sales_details.csv'
+			WITH (
+				FIRSTROW = 2, 
+				FIELDTERMINATOR = ',', 
+				TABLOCK
+			)
+			SET @end_time = GETDATE();
+			PRINT'=> Load duration: ' + CAST(DATEDIFF(second, @start_time, @end_time)AS NVARCHAR) + 'seconds'
+			PRINT'<><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+
+
+																 /* load erp_cust_az12 */
+			SET @start_time = GETDATE();
+			print('---------------------------------------');
+			print('=> Loading ERP table');
+			print('---------------------------------------');
+
+			print('=> Truncating table: bronze.erp_cust_az12');
+			TRUNCATE TABLE bronze.erp_cust_az12
+
+			print('=> Inserting data | table: bronze.erp_cust_az12');
+			BULK INSERT bronze.erp_cust_az12
+			FROM 'C:\Users\ezean\OneDrive\Desktop\sql-data-warehouse-project\datasets\source_erp\cust_az12.csv'
+			WITH (
+				FIRSTROW = 2, 
+				FIELDTERMINATOR = ',', 
+				TABLOCK
+			)
+			SET @end_time = GETDATE();
+			PRINT'=> Load duration: ' + CAST(DATEDIFF(second, @start_time, @end_time)AS NVARCHAR) + 'seconds'
+			PRINT'<><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+
+
+																 /* load erp_loc_a101 */
+			SET @start_time = GETDATE();
+			print('=> Truncating table: bronze.erp_loc_a101');
+			TRUNCATE TABLE bronze.erp_loc_a101
+
+			print('=> Inserting data | table: bronze.erp_loc_a101');
+			BULK INSERT bronze.erp_loc_a101
+			FROM 'C:\Users\ezean\OneDrive\Desktop\sql-data-warehouse-project\datasets\source_erp\loc_a101.csv'
+			WITH (
+				FIRSTROW = 2, 
+				FIELDTERMINATOR = ',', 
+				TABLOCK
+			)
+			SET @end_time = GETDATE();
+			PRINT'=> Load duration: ' + CAST(DATEDIFF(second, @start_time, @end_time)AS NVARCHAR) + 'seconds'
+			PRINT'<><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+
+
+																 /* load erp_px_cat_g1v2 */
+			SET @start_time = GETDATE();
+			print('=> Truncating table: bronze.erp_px_cat_g1v2');
+			TRUNCATE TABLE bronze.erp_px_cat_g1v2
+
+			print('=> Inserting data | table: bronze.erp_px_cat_g1v2');
+			BULK INSERT bronze.erp_px_cat_g1v2
+			FROM 'C:\Users\ezean\OneDrive\Desktop\sql-data-warehouse-project\datasets\source_erp\px_cat_g1v2.csv'
+			WITH (
+				FIRSTROW = 2, 
+				FIELDTERMINATOR = ',', 
+				TABLOCK
+			)
+			SET @end_time = GETDATE();
+			PRINT'=> Load duration: ' + CAST(DATEDIFF(second, @start_time, @end_time)AS NVARCHAR) + 'seconds'
+			PRINT'<><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+
+		END TRY
+		BEGIN CATCH
+		PRINT'==================================================================';
+		PRINT'Error occured when loading bronze layer';
+		PRINT'Error message' + ERROR_MESSAGE();
+		PRINT'==================================================================';
+		END CATCH
+END
