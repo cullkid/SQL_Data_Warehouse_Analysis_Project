@@ -1,1 +1,135 @@
+/*
+                                Query Details
 
+confirming the bronze.crm_cust_info table accuracy
+this is done by filtering the duplicated and null rows of cust_id to get the cst_id that exist only once
+
+======================================================================
+                           step 1.
+check a duplicate or null primary key in bronze.crm_cust_info table by
+the 'HAVING' query helped to count all the cst_id rows after it has been GROUP
+it provide the rows that meet up the condion from the created count column 
+
+========================================================================
+                     stp 2
+decision to chose the accurate role from the duplicated rows
+the decition was taken from the cst_create_date column by taking the most created recent one
+
+ROW_NUMBER() is a window function, use to create a new column ...
+by using the PARTITION BY column rows and number the rows sequentially like(1,2,3) inside the created column ...
+then use the ORDER BY column rows to arrange the new created column in highest or descending order
+
+apply the ROW_NUMBER() in duplicated cst_id, use partition and order to get the recent cst_create_date
+remeber
+
+apply the ROW_NUMBER() in all cst_id to show where the new created column is 1, which is duplicate rows
+remeber we don't want duplicate rows
+
+====================================================================
+
+											step 3
+looking at the data, i notice that we have unwanted space on the string value
+lets first use trim value to get the string data with unwanted space
+the trim shows that firstname and lastname have unwanted space and need to trim
+
+=======================================================================
+
+											step 4
+let's check the consistency of gender and marital status column
+first check how many diffrenet value it have by distinct the 2 column
+secondly use CASE quey to give them a full name to be understandable and easy to work with
+also used UPPER incase it they contain small letter and trim incase it encounter unwanted space
+
+===========================================================================
+
+											step5
+add insert query on the top of the query with the columns
+and then insert the clean query to silver customer info
+then cross check the silver customer info data created is accurate
+
+*/
+
+SELECT * FROM bronze.crm_cust_info
+
+/* step 1 */
+SELECT 
+cst_id,
+COUNT(*) AS cust_id_count
+FROM bronze.crm_cust_info
+GROUP BY cst_id
+HAVING COUNT(*) > 1 OR cst_id IS NULL
+
+/* step 2 */
+SELECT * FROM bronze.crm_cust_info
+WHERE cst_id = 29466
+
+SELECT *,
+ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS create_last
+FROM bronze.crm_cust_info
+WHERE cst_id = 29466
+
+SELECT * FROM (SELECT *,
+ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS create_last
+FROM bronze.crm_cust_info)t WHERE create_last = 1
+
+/* step 3 */
+SELECT cst_firstname FROM bronze.crm_cust_info WHERE cst_firstname  != TRIM(cst_firstname)
+
+SELECT cst_lastname FROM bronze.crm_cust_info WHERE cst_lastname   != TRIM(cst_lastname)   
+
+SELECT cst_marital_status FROM bronze.crm_cust_info WHERE cst_marital_status != TRIM(cst_marital_status)
+
+SELECT  cst_gndr FROM bronze.crm_cust_info WHERE cst_gndr != TRIM(cst_gndr);
+
+SELECT *, 
+TRIM(cst_firstname) AS cst_firstname, 
+TRIM(cst_lastname) AS cst_lastname 
+FROM 
+(SELECT *, 
+ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS create_last
+FROM bronze.crm_cust_info)t WHERE create_last = 1
+
+/* step 4 */
+SELECT DISTINCT cst_gndr, cst_marital_status FROM bronze.crm_cust_info
+
+SELECT cst_id, 
+cst_key,
+TRIM(cst_firstname) AS cst_firstname, 
+TRIM(cst_lastname) AS cst_lastname,
+CASE WHEN UPPER(TRIM(cst_marital_status)) = 'M' THEN 'Married'
+	WHEN UPPER(TRIM(cst_marital_status)) = 'S' THEN 'Single'
+	ELSE 'Not-Answered'
+END cust_marital_status,
+CASE WHEN UPPER(TRIM(cst_gndr)) = 'M' THEN 'Male'
+	WHEN UPPER(TRIM(cst_gndr)) = 'F' THEN 'Female'
+	ELSE 'Not-Answered'
+END cust_gndr
+FROM 
+	(SELECT *, 
+	ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS create_last
+	FROM bronze.crm_cust_info
+	WHERE cst_id IS NOT NULL
+)t WHERE create_last = 1 OR cst_id = NULL
+
+/* step 5 */
+INSERT INTO silver.crm_cust_info (cst_id, cst_key, cst_firstname, cst_lastname, cst_marital_status, cst_gndr, cst_create_date)
+
+SELECT cst_id, 
+cst_key,
+TRIM(cst_firstname) AS cst_firstname, 
+TRIM(cst_lastname) AS cst_lastname,
+CASE WHEN UPPER(TRIM(cst_marital_status)) = 'M' THEN 'Married'
+	WHEN UPPER(TRIM(cst_marital_status)) = 'S' THEN 'Single'
+	ELSE 'Not-Answered'
+END cst_marital_status,
+CASE WHEN UPPER(TRIM(cst_gndr)) = 'M' THEN 'Male'
+	WHEN UPPER(TRIM(cst_gndr)) = 'F' THEN 'Female'
+	ELSE 'Not-Answered'
+END cst_gndr,
+cst_create_date
+FROM 
+	(SELECT *, 
+	ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) AS create_last
+	FROM bronze.crm_cust_info
+	WHERE cst_id IS NOT NULL
+)t WHERE create_last = 1 
