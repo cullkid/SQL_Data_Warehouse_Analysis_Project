@@ -1,1 +1,28 @@
+/*
+
+To create the silver schema table which consist of exploring and cleaning the bronze table to drive more meaning,
+it's very crucial and important to know the relationships of all the bronze table
+drawio will be helpfull to sketch out the relationships
+let get all the top 1000 rows of each table and look for their relationships
+
+============================================================================
+
+looking at the tables:
+crm_cust_info and crm_prd_info has no relationship to join
+crm_sales_details have relationship with crm_cust_info => cust_id column and sale_cust_id column
+crm_sales_details have relationship with crm_prd_info => prd_key column and sale_prd_key column
+erp_cust_az12 have relationship with crm_cust_info => cid column and cust_key column
+erp_loc_a101 have relationship with crm_cust_info => cid column and cust_key column
+erp_px_cat_g1v2 have relationship with crm_prd_info => id column and prd_key column
+run the 2 related tables to view how they related
+
+*/
+
+
+SELECT TOP 1000 * FROM bronze.crm_cust_info
+SELECT TOP 1000 * FROM bronze.crm_prd_info
+SELECT TOP 1000 * FROM bronze.crm_sales_details
+SELECT TOP 1000 * FROM bronze.erp_cust_az12
+SELECT TOP 1000 * FROM bronze.erp_loc_a101
+SELECT TOP 1000 * FROM bronze.erp_px_cat_g1v2
 
