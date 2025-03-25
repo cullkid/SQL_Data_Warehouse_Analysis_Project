@@ -1,0 +1,149 @@
+/*
+
+									quer details
+
+==============================================================
+
+												step 1
+clean the bronze.crm_sales_details and insert it into the silver.crm_sales_details table
+check if the relationship between the bronze.crm_sales_details and silver.crm_prd_info bears the same thing and
+ check if the relationship between the bronze.crm_sales_details and silver.crm_cust_info bear the same thing
+
+ ===================================================================
+
+											step 2
+ work on all the dates columns by checking all the values in all rows to know if there is missing data or 0.
+ count the lenght of the date and check if any row is more than the leghth
+ check if any date is above the expected younger age or older age based on the company requirement
+ if any of these are found, then use CASE to transform then row to null
+ to conver the columns from int to date format, first cast it into VARCHAR and then cast into dat
+ also ensure the order date is not higher than due and ship date
+
+ ==============================================================
+
+													step 3
+foloowing the rule of the business from the company board:
+1. the sls_sales column is = sls_quantity multiply by sls_price
+2. the sls_sales, sls_quantity, sls_price columns should not have any nagative, zero or null values
+so first lets get the row that did not meet up the requirement and clean them
+
+After the gettting the unmatched critarials, a discusion was concluded between i and the client that:
+1. any null, zero, nagative or not = to price * price value inside the sales column should be...
+should have a new value of quantity * price of the row, the price should be inside ABS() in case the value is nagative
+2. any zero or nagative value in price columns should have a new value of sales divided by quantity, then place the...
+quantity inside NULLIF() to turn any zero value inside the quantity to be null
+
+then add it as the sales and price column respectfully and insert into the silver.crm_sales_details table
+ensure to confirm the column and column type of the 2 tables, edit and recreate table if neccessary
+
+*/
+
+SELECT * FROM bronze.crm_sales_details
+
+/* step 1 */
+SELECT sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+sls_order_dt,
+sls_ship_dt,
+sls_due_dt,
+sls_sales,
+sls_quantity,
+sls_price
+FROM bronze.crm_sales_details
+WHERE sls_prd_key NOT in (SELECT prd_key FROM silver.crm_prd_info)
+
+SELECT sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+sls_order_dt,
+sls_ship_dt,
+sls_due_dt,
+sls_sales,
+sls_quantity,
+sls_price
+FROM bronze.crm_sales_details
+WHERE sls_cust_id NOT in (SELECT cst_id FROM silver.crm_cust_info)
+
+/* step 2 */
+SELECT
+sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+CASE WHEN sls_order_dt = 0 OR LEN(sls_order_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_order_dt AS VARCHAR) AS DATE)
+END AS sls_order_dt,
+CASE WHEN sls_ship_dt = 0 OR LEN(sls_ship_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_ship_dt AS VARCHAR) AS DATE)
+END AS sls_ship_dt,
+CASE WHEN sls_due_dt = 0 OR LEN(sls_due_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_due_dt AS VARCHAR) AS DATE)
+END AS sls_due_dt,
+sls_sales,
+sls_quantity,
+sls_price
+FROM bronze.crm_sales_details
+
+/* step 3 */
+SELECT DISTINCT sls_sales, sls_quantity, sls_price FROM bronze.crm_sales_details
+WHERE sls_sales != sls_quantity * sls_price OR
+sls_sales IS NOT NULL OR sls_quantity IS NOT NULL OR sls_price IS NOT NULL OR
+sls_sales <= 0 OR sls_quantity <= 0 OR sls_price <= 0
+ORDER BY sls_sales, sls_quantity, sls_price
+
+SELECT DISTINCT sls_sales AS old_sls_saled, sls_price  AS old_sls_price,
+CASE WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quantity * ABS(sls_price) 
+	THEN sls_quantity * ABS(sls_price) ELSE sls_sales
+END AS sls_sales,
+sls_quantity, 
+CASE WHEN sls_price IS NULL OR sls_price <= 0 THEN sls_sales / NULLIF(sls_quantity, 0)
+	ELSE sls_price
+END AS sls_price
+FROM bronze.crm_sales_details
+
+SELECT
+sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+CASE WHEN sls_order_dt = 0 OR LEN(sls_order_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_order_dt AS VARCHAR) AS DATE)
+END AS sls_order_dt,
+CASE WHEN sls_ship_dt = 0 OR LEN(sls_ship_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_ship_dt AS VARCHAR) AS DATE)
+END AS sls_ship_dt,
+CASE WHEN sls_due_dt = 0 OR LEN(sls_due_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_due_dt AS VARCHAR) AS DATE)
+END AS sls_due_dt,
+CASE WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quantity * ABS(sls_price) 
+	THEN sls_quantity * ABS(sls_price) ELSE sls_sales
+END AS sls_sales,
+sls_quantity, 
+CASE WHEN sls_price IS NULL OR sls_price <= 0 THEN sls_sales / NULLIF(sls_quantity, 0)
+	ELSE sls_price
+END AS sls_price
+FROM bronze.crm_sales_details
+
+INSERT INTO silver.crm_sales_details (sls_ord_num, sls_prd_key, sls_cust_id, 
+sls_order_dt, sls_ship_dt,  sls_due_dt, sls_sales, sls_quantity, sls_price)
+
+SELECT
+sls_ord_num,
+sls_prd_key,
+sls_cust_id,
+CASE WHEN sls_order_dt = 0 OR LEN(sls_order_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_order_dt AS VARCHAR) AS DATE)
+END AS sls_order_dt,
+CASE WHEN sls_ship_dt = 0 OR LEN(sls_ship_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_ship_dt AS VARCHAR) AS DATE)
+END AS sls_ship_dt,
+CASE WHEN sls_due_dt = 0 OR LEN(sls_due_dt) != 8 THEN NULL
+	ELSE  CAST(CAST(sls_due_dt AS VARCHAR) AS DATE)
+END AS sls_due_dt,
+CASE WHEN sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quantity * ABS(sls_price) 
+	THEN sls_quantity * ABS(sls_price) ELSE sls_sales
+END AS sls_sales,
+sls_quantity, 
+CASE WHEN sls_price IS NULL OR sls_price <= 0 THEN sls_sales / NULLIF(sls_quantity, 0)
+	ELSE sls_price
+END AS sls_price
+FROM bronze.crm_sales_details
