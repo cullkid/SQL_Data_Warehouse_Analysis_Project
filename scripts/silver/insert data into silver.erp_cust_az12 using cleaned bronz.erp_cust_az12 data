@@ -51,6 +51,7 @@ END AS bdate,
 FROM bronze.erp_cust_az12 
 
 /* step 3 */
+TRUNCATE TABLE silver.erp_cust_az12 /* avoid inserting table twice */
 INSERT INTO silver.erp_cust_az12 (cid, bdate, gen)
 
 SELECT 
