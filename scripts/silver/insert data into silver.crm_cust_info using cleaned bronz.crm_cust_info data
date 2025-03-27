@@ -112,7 +112,7 @@ FROM
 )t WHERE create_last = 1 OR cst_id = NULL
 
 /* step 5 */
-TRUNCATE TABLE silver.erp_px_cat_g1v2 /* avoid inserting table twice */
+TRUNCATE TABLE silver.crm_cust_info /* avoid inserting table twice */
 INSERT INTO silver.crm_cust_info (cst_id, cst_key, cst_firstname, cst_lastname, cst_marital_status, cst_gndr, cst_create_date)
 
 SELECT cst_id, 
