@@ -30,6 +30,7 @@ cntry from bronze.erp_loc_a101
 SELECT DISTINCT cntry FROM bronze.erp_loc_a101
 ORDER BY cntry
 
+TRUNCATE TABLE silver.erp_loc_a101 /* avoid inserting table twice */
 INSERT INTO silver.erp_loc_a101 (cid, cntry)
 SELECT
 REPLACE(cid, '-', '') cid,
