@@ -1,1 +1,12 @@
 
+/*
+
+This bronze.erp_px_cat_g1v2 table has everything correct after cross check
+so let's go ahaed and insert it to the silver.erp_px_cat_g1v2 table traight away
+
+*/
+TRUNCATE TABLE silver.erp_px_cat_g1v2 /* avoid inserting table twice */
+INSERT INTO silver.erp_px_cat_g1v2 (id, cat, subcat, maintenance)
+SELECT id, cat, subcat, maintenance FROM bronze.erp_px_cat_g1v2
+
+SELECT * FROM silver.erp_px_cat_g1v2
