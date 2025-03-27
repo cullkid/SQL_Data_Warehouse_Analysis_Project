@@ -1,1 +1,168 @@
+/*
+                                Query Details
 
+confirming the bronze.crm_cust_info table accuracy
+this is done by filtering the duplicated and null rows of prd_id to get the prd_id that exist only once
+
+======================================================================
+                           step 1.
+check a duplicate or null primary key in bronze.crm_prd_info table by
+the 'HAVING' query helped to count all the prd_id rows after it has been GROUP
+it provide the rows that meet up the condion from the created count column 
+
+========================================================================
+
+											step 2
+spliting the prd_key column into 2 column
+use SUBSTRING to split it to get the first 4 character from left to be cat_id
+SUBSTRING(name of column to split, start index to split from, how many index to extract)
+use REPLACE to change the - to _ in the new created cat_id in order to match the one in category table for join 
+then use subquery to check the new created cat_id missing inside the category table  ...
+which is normal as the both do not have the same and equal cat_id
+also extract prd_key from the same column to help use join the extracted prd_key to another column
+
+================================================================================
+
+												step 3
+check if prd_cost have a nagative or null value
+replace the null to 0 because null means nothing or zero
+use ISNULL function to replace it => ISNULL(column name, value to replace null with which is 0)
+
+=======================================================================
+
+													step 4
+let's check the consistency of product line column
+first check how many diffrenet value it have by distinct the column
+secondly use CASE quey to give them a full name to be understandable and easy to work with
+also used UPPER incase it contain small letter and trim incase it encounter unwanted space
+
+========================================================================
+
+											step 5
+check the data consistency of the start and end date column
+first check if there is any end dat column earlier than start date
+if found use arrow function called 'LEAD' to assign the correct data in these way:
+1. LEAD function asign the prd_start_dt second row to prd_end_dt first row respectully ...
+and minus 1 day from the value of that prd_start_dt second row
+2. the partition will group the data by prd_key to help the LEAD to re-arrange ...
+the date base on the prd_d, meaning to arrange the same pdr_key sequentically
+3. then order the rows by prd_start_dt in each prd_group before re-arrange date with LEAD
+then use CAST function to formart the 2 columns value as date only, in order to remove the time attach to them
+
+========================================================================
+										step 6
+insert the cleaned bronze.crm_prd_info table into the silver.crm_prd_info
+ensure to check if the already created silver.crm_prd_info table and table types...
+matches the cleaned bronze.crm_prd_info table and table type before inserting
+
+*/											
+
+
+/* step 1 */
+
+SELECT * FROM bronze.crm_prd_info
+
+SELECT 
+prd_id,
+COUNT(*) AS cust_id_count
+FROM bronze.crm_prd_info
+GROUP BY prd_id
+HAVING COUNT(*) > 1 OR prd_id IS NULL
+
+/* step 2 */
+SELECT prd_id,
+prd_key, 
+REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+prd_nm, 
+prd_cost, 
+prd_line, 
+prd_start_dt, 
+prd_end_dt FROM bronze.crm_prd_info
+
+SELECT prd_id,
+prd_key, 
+REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+prd_nm, 
+prd_cost, 
+prd_line, 
+prd_start_dt, 
+prd_end_dt FROM bronze.crm_prd_info
+/*WHERE REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') NOT IN (
+SELECT DISTINCT id from bronze.erp_px_cat_g1v2)*/
+
+/* step 3 */
+SELECT prd_cost FROM bronze.crm_prd_info WHERE prd_cost < 0 OR prd_cost IS NULL
+
+SELECT prd_id,
+prd_key, 
+REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+prd_nm, 
+ISNULL(prd_cost, 0), 
+prd_line, 
+prd_start_dt, 
+prd_end_dt FROM bronze.crm_prd_info
+
+/* step 4 */
+SELECT DISTINCT prd_line FROM bronze.crm_prd_info
+
+SELECT prd_id,
+prd_key, 
+REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+prd_nm, 
+ISNULL(prd_cost, 0), 
+CASE UPPER(TRIM(prd_line)) 
+	WHEN  'M' THEN 'Mountain'
+	WHEN  'R' THEN 'Road'
+	WHEN  'S' THEN 'Other Sales'
+	WHEN  'T' THEN 'Touring'
+	ELSE 'Not Answered'
+END prd_line,
+prd_start_dt, 
+prd_end_dt FROM bronze.crm_prd_info
+
+
+/* step 5 */
+SELECT * FROM bronze.crm_prd_info
+WHERE prd_end_dt < prd_start_dt
+
+SELECT prd_id,
+prd_key, 
+REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+prd_nm, 
+ISNULL(prd_cost, 0), 
+CASE UPPER(TRIM(prd_line)) 
+	WHEN  'M' THEN 'Mountain'
+	WHEN  'R' THEN 'Road'
+	WHEN  'S' THEN 'Other Sales'
+	WHEN  'T' THEN 'Touring'
+	ELSE 'Not Answered'
+END prd_line,
+CAST (prd_start_dt AS DATE) AS prd_start_dt , 
+CAST (LEAD(prd_start_dt) OVER (PARTITION BY prd_key ORDER BY prd_start_dt) - 1 AS DATE) AS prd_end_dt
+FROM bronze.crm_prd_info
+
+/* step 6 */
+TRUNCATE TABLE silver.crm_prd_info /* avoid inserting table twice */
+INSERT INTO silver.crm_prd_info (prd_id, cat_id, prd_key, prd_nm, prd_cost, prd_line, prd_start_dt, prd_end_dt)
+
+SELECT prd_id,
+REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+prd_nm, 
+ISNULL(prd_cost, 0) AS prd_cost,
+CASE UPPER(TRIM(prd_line)) 
+	WHEN  'M' THEN 'Mountain'
+	WHEN  'R' THEN 'Road'
+	WHEN  'S' THEN 'Other Sales'
+	WHEN  'T' THEN 'Touring'
+	ELSE 'Not Answered'
+END prd_line,
+CAST (prd_start_dt AS DATE) AS prd_start_dt , 
+CAST (LEAD(prd_start_dt) OVER (PARTITION BY prd_key ORDER BY prd_start_dt) - 1 AS DATE) AS prd_end_dt
+FROM bronze.crm_prd_info
+
+SELECT * FROM silver.crm_prd_info
