@@ -1,17 +1,17 @@
 /*
 
-									quer details
+			quer details
 
 ==============================================================
 
-												step 1
+			step 1
 clean the bronze.crm_sales_details and insert it into the silver.crm_sales_details table
 check if the relationship between the bronze.crm_sales_details and silver.crm_prd_info bears the same thing and
  check if the relationship between the bronze.crm_sales_details and silver.crm_cust_info bear the same thing
 
  ===================================================================
 
-											step 2
+			step 2
  work on all the dates columns by checking all the values in all rows to know if there is missing data or 0.
  count the lenght of the date and check if any row is more than the leghth
  check if any date is above the expected younger age or older age based on the company requirement
@@ -21,7 +21,7 @@ check if the relationship between the bronze.crm_sales_details and silver.crm_pr
 
  ==============================================================
 
-													step 3
+			step 3
 foloowing the rule of the business from the company board:
 1. the sls_sales column is = sls_quantity multiply by sls_price
 2. the sls_sales, sls_quantity, sls_price columns should not have any nagative, zero or null values
