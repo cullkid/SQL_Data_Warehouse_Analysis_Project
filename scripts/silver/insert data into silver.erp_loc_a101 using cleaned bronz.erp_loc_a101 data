@@ -1,0 +1,44 @@
+/*
+									QUERY DETAILS
+
+===================================================================
+
+										step 1
+the bronze.erp_loc_a101 have a relationship with the cleaned bronze.crm_cust_info(silver.crm_cust_info)
+the relationship is the cid column in erp_loc_a101 table and cst_key column in crm_cust_info table
+after check, the cid need to be clean and have the same value with cst_key using replace()
+
+=====================================================================
+
+											step 2
+check accuracy of the cntry column
+use CASE WHEN to asign normal value to the wrong value
+
+after that, then insert the cleaned data into the silver.erp_loc_a101 table
+
+*/
+
+/* step 1 */
+SELECT * FROM silver.crm_cust_info
+SELECT DISTINCT * FROM bronze.erp_loc_a101
+
+SELECT
+REPLACE(cid, '-', '') cid,
+cntry from bronze.erp_loc_a101
+
+/* step 2 */
+SELECT DISTINCT cntry FROM bronze.erp_loc_a101
+ORDER BY cntry
+
+INSERT INTO silver.erp_loc_a101 (cid, cntry)
+SELECT
+REPLACE(cid, '-', '') cid,
+CASE WHEN TRIM(cntry) = 'DE' THEN 'Germany'
+	WHEN TRIM(cntry) IN ('US', 'USA') THEN 'Unted States'
+	WHEN TRIM(cntry) = '' OR cntry IS NULL THEN 'Not answered'
+	ELSE TRIM(cntry)
+END AS cntry
+from bronze.erp_loc_a101
+
+SELECT * FROM silver.erp_loc_a101
+
