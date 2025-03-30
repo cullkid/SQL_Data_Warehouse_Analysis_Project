@@ -1,0 +1,68 @@
+/*
+
+the product table have a relatioship with the category table
+let's get the current history from the product table and join it with category table
+current histroy is when the end_date is null, meaning that the product is still on and have not been closed
+
+check also if there is any duplicate rows after join
+
+and then sort and order the columns, also give the columns reasonable name
+add index to identify the primary unique number to each row
+then create a view for the new joined product table
+
+*/
+
+SELECT
+pn.prd_id,
+pn.cat_id,
+pn.prd_key,
+pn.prd_nm,
+pn.prd_cost,
+pn.prd_line,
+pn.prd_start_dt,
+cat,
+subcat,
+maintenance
+FROM silver.crm_prd_info pn
+LEFT JOIN silver.erp_px_cat_g1v2 ct
+ON pn.cat_id = ct.id
+WHERE pn.prd_end_dt IS NULL
+
+SELECT prd_key, COUNT(*) FROM(
+SELECT
+pn.prd_id,
+pn.cat_id,
+pn.prd_key,
+pn.prd_nm,
+pn.prd_cost,
+pn.prd_line,
+pn.prd_start_dt,
+cat,
+subcat,
+maintenance
+FROM silver.crm_prd_info pn
+LEFT JOIN silver.erp_px_cat_g1v2 ct
+ON pn.cat_id = ct.id
+WHERE pn.prd_end_dt IS NULL
+) t GROUP BY prd_key
+HAVING COUNT(*) > 1
+
+CREATE VIEW gold.products_dimention AS
+SELECT
+ROW_NUMBER() OVER (ORDER BY pn.prd_start_dt, pn.prd_key) AS product_index,
+pn.prd_id AS product_id,
+pn.prd_key AS product_number,
+pn.prd_nm AS product_name,
+pn.cat_id AS category_id,
+cat AS category,
+subcat AS sub_category,
+maintenance AS maintenance,
+pn.prd_cost AS cost,
+pn.prd_line AS product_line,
+pn.prd_start_dt AS start_dates
+FROM silver.crm_prd_info pn
+LEFT JOIN silver.erp_px_cat_g1v2 ct
+ON pn.cat_id = ct.id
+WHERE pn.prd_end_dt IS NULL
+
+SELECT * FROM gold.products_dimention
